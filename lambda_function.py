@@ -3,7 +3,7 @@ AWS lambda code for guess Them Avengers
 """
 
 from __future__ import print_function
-from helpScript import avengers, avengerHint
+from helpScript import avengers, avengerHint, voices
 import random
 
 # --------------- Helpers that build all of the responses ----------------------
@@ -11,8 +11,8 @@ import random
 def build_speechlet_response(title, output, reprompt_text, should_end_session):
     return {
         'outputSpeech': {
-            'type': 'PlainText',
-            'text': output
+            'type': 'SSML',
+            'ssml': "<speak> "+output+" </speak>"
         },
         'card': {
             'type': 'Simple',
@@ -42,6 +42,9 @@ def get_guessIntent_response(intent, session):
     card_title = "Guess"
     should_end_session = False
 
+    loudEmphasis = '<prosody volume="x-loud">{text}</prosody>'
+    sayAs = '<say-as interpret-as="interjection">{text}</say-as>'
+
     session_attributes = session['attributes']
     print(session_attributes)
     userInput = intent['slots']['avengerName']['resolutions']['resolutionsPerAuthority'][0]
@@ -56,15 +59,15 @@ def get_guessIntent_response(intent, session):
         print(chosenAvenger)
 
         if guessedAvenger == chosenAvenger:
-            speech_output = "Correct Answer! You've been watching Marvel closely. Hope to see you loose next time!"
+            speech_output = loudEmphasis.format(text='Correct Answer!')+" You've been watching Marvel closely. Hope to see you loose next time!"
             reprompt_text = "Great Guess! You won't be so lucky next time though."
             should_end_session = True
         elif not session_attributes['confirming']:
-            speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
+            speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = loudEmphasis.format(text=avengers[guessedAvenger]))
             reprompt_text = "You really think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
             session_attributes['confirming'] = True
         else:
-            speech_output = "Have you actually watched any Marvel movie? That's an Incorrect Answer. Watch some movies and come back again!"
+            speech_output = loudEmphasis.format(text="Have you actually watched any Marvel movie?")+" That's an Incorrect Answer. Watch some movies and come back again!"
             reprompt_text = "Seriously. Watch some Marvel movies. They're great!"
             should_end_session = True
     else:
@@ -82,7 +85,9 @@ def get_repeatIntent_response(intent, session):
     chosenAvenger = session_attributes['chosenAvenger']
     chosenHint = session_attributes['chosenHint']
     repeatHint = avengerHint[chosenAvenger][chosenHint]
-    speech_output = "Yeah, here it is. "+repeatHint
+    reducedEmphasis = '<emphasis level="reduced">{text}</emphasis>'
+    modEmphasis = '<emphasis level="moderate">{text}</emphasis>'
+    speech_output = reducedEmphasis.format(text='Yeah, here it is.') + ' <break time="1s"/> ' + modEmphasis.format(text=repeatHint)
     reprompt_text = "I'll repeat again. "+repeatHint
         
     should_end_session = False
@@ -95,7 +100,7 @@ def get_welcome_response():
     """
     session_attributes = {}
     card_title = "Welcome"
-    speech_output = "Welca, Oh Wait. We don't do that here. So! Let's see what you've got. Here's your hint. "
+    speech_output = """Welcome!, Oh Wait. We don't do that here. So! Let's see what you've got. Here's your hint. <break time="1s"/>"""
 
     totalAvengers = len(avengers)
     chosenAvenger = random.randint(0,totalAvengers-1)
@@ -107,7 +112,9 @@ def get_welcome_response():
     session_attributes['chosenHint'] = chosenHint
     session_attributes['confirming'] = False
 
-    speech_output += avengerHint[chosenAvenger][chosenHint]
+    modEmphasis = '<emphasis level="moderate">{text}</emphasis>'
+    speech_output += '<voice name="{voice}">{text}</voice>'.format(text=avengerHint[chosenAvenger][chosenHint], voice=voices[chosenAvenger])
+    #speech_output += modEmphasis.format(text=avengerHint[chosenAvenger][chosenHint])
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
     reprompt_text = "I'll repeat. "+avengerHint[chosenAvenger][chosenHint]
@@ -118,7 +125,9 @@ def get_welcome_response():
 
 def handle_session_end_request():
     card_title = "Session Ended"
-    speech_output = "Thank you for trying me out. Endgame!"
+    modEmphasis = '<emphasis level="moderate">{text}</emphasis>'
+    endgame = modEmphasis.format(text='Endgame!')
+    speech_output = "Thank you for trying me out. " + endgame
     # Setting this to true ends the session and exits the skill.
     should_end_session = True
     return build_response({}, build_speechlet_response(
