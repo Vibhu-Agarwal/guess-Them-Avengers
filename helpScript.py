@@ -23,7 +23,7 @@ thor_hints = [
 "Can someone give me a horse to travel?"]
 
 hulk_hints = [
-"Puny. God.",
+"Puny, God.",
 "I love Natasha."
 ]
 

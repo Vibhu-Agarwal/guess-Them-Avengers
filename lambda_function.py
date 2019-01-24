@@ -39,26 +39,51 @@ def build_response(session_attributes, speechlet_response):
 # --------------- Functions that control the skill's behavior ------------------
 
 def get_guessIntent_response(intent, session):
-    session_attributes = {}
-    #userInput = intent['slots']['avengerName']['resolutions']['resolutionsPerAuthority'][0]['values'][0]['value']
-    #guessedAvenger = int(userInput['id'])
-    #chosenAvenger = session_attributes['chosenAvenger']
-
-    guessedAvenger = 0
-
     card_title = "Guess"
-    speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
-    reprompt_text = "You really think it's {guessedAvenger}?.".format(guessedAvengerName = avengers[guessedAvenger])
     should_end_session = False
+
+    session_attributes = session['attributes']
+    print(session_attributes)
+    userInput = intent['slots']['avengerName']['resolutions']['resolutionsPerAuthority'][0]
+
+    userInputStatus = userInput['status']['code']
+    matchedCode = "ER_SUCCESS_MATCH"
+
+    if userInputStatus == matchedCode:
+        userInputValues = userInput['values'][0]['value']
+        guessedAvenger = int(userInputValues['id'])
+        chosenAvenger = session_attributes['chosenAvenger']
+        print(chosenAvenger)
+
+        if guessedAvenger == chosenAvenger:
+            speech_output = "Correct Answer! You've been watching Marvel closely. Hope to see you loose next time!"
+            reprompt_text = "Great Guess! You won't be so lucky next time though."
+            should_end_session = True
+        elif not session_attributes['confirming']:
+            speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
+            reprompt_text = "You really think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
+            session_attributes['confirming'] = True
+        else:
+            speech_output = "Have you actually watched any Marvel movie? That's an Incorrect Answer. Watch some movies and come back again!"
+            reprompt_text = "Seriously. Watch some Marvel movies. They're great!"
+            should_end_session = True
+    else:
+        guessedAvenger = 0
+        speech_output = "I don't think I know him, or her."
+        reprompt_text = "Really, Don't know him."
+
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
 
 
 def get_repeatIntent_response(intent, session):
-    session_attributes = {}
     card_title = "Repeat"
-    speech_output = "Repeat Intent Called Hmmm."
-    reprompt_text = "Repeating the Repeat"
+    session_attributes = session['attributes']
+    chosenAvenger = session_attributes['chosenAvenger']
+    chosenHint = session_attributes['chosenHint']
+    repeatHint = avengerHint[chosenAvenger][chosenHint]
+    speech_output = "Yeah, here it is. "+repeatHint
+    reprompt_text = "I'll repeat again. "+repeatHint
         
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
@@ -80,7 +105,7 @@ def get_welcome_response():
 
     session_attributes['chosenAvenger'] = chosenAvenger
     session_attributes['chosenHint'] = chosenHint
-    session_attributes['repeated'] = False
+    session_attributes['confirming'] = False
 
     speech_output += avengerHint[chosenAvenger][chosenHint]
     # If the user either does not reply to the welcome message or says something
@@ -93,8 +118,7 @@ def get_welcome_response():
 
 def handle_session_end_request():
     card_title = "Session Ended"
-    speech_output = "Thank you for trying me out." \
-                    "Endgame!"
+    speech_output = "Thank you for trying me out. Endgame!"
     # Setting this to true ends the session and exits the skill.
     should_end_session = True
     return build_response({}, build_speechlet_response(
