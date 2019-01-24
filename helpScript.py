@@ -9,21 +9,25 @@ avengers = {
 captain_america_hints = [
 "On your left.",
 "I know how it feels to suffer frost bite.",
-"Even Coleson loves my Action cards."]
+"Even Coulson loves my Action cards."]
 
 black_widow_hints = [
+"The person who developed this is slightly smarter than me. Slightly.",
 "Bruce is only in my control.",
 "I'm gonna kill Thanos with a stick.",]
 
 iron_man_hints = [
+"Following’s not really my style.",
 "Please pass me some pepper.",
 "Genius. Billionaire. Playboy. Philanthropist."]
 
 thor_hints = [
+"I've got an my ass to guard, you know.",
 "Have you seen my, uh, Natalie Portman?",
 "Can someone give me a horse to travel?"]
 
 hulk_hints = [
+"Smash!",
 "Puny, God.",
 "I love Natasha."
 ]

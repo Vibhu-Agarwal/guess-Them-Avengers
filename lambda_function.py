@@ -46,7 +46,7 @@ def get_guessIntent_response(intent, session):
     sayAs = '<say-as interpret-as="interjection">{text}</say-as>'
 
     session_attributes = session['attributes']
-    print(session_attributes)
+    #print(session_attributes)
     userInput = intent['slots']['avengerName']['resolutions']['resolutionsPerAuthority'][0]
 
     userInputStatus = userInput['status']['code']
@@ -56,16 +56,16 @@ def get_guessIntent_response(intent, session):
         userInputValues = userInput['values'][0]['value']
         guessedAvenger = int(userInputValues['id'])
         chosenAvenger = session_attributes['chosenAvenger']
-        print(chosenAvenger)
 
         if guessedAvenger == chosenAvenger:
             speech_output = loudEmphasis.format(text='Correct Answer!')+" You've been watching Marvel closely. Hope to see you loose next time!"
             reprompt_text = "Great Guess! You won't be so lucky next time though."
             should_end_session = True
-        elif not session_attributes['confirming']:
+        elif session_attributes['notConfirmed'] and not session_attributes['confirming']:
             speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = loudEmphasis.format(text=avengers[guessedAvenger]))
             reprompt_text = "You really think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
             session_attributes['confirming'] = True
+            session_attributes['tempAnswer'] = guessedAvenger
         else:
             speech_output = loudEmphasis.format(text="Have you actually watched any Marvel movie?")+" That's an Incorrect Answer. Watch some movies and come back again!"
             reprompt_text = "Seriously. Watch some Marvel movies. They're great!"
@@ -82,6 +82,11 @@ def get_guessIntent_response(intent, session):
 def get_repeatIntent_response(intent, session):
     card_title = "Repeat"
     session_attributes = session['attributes']
+
+    if session_attributes['confirming']:
+        session_attributes['confirming'] = False
+        session_attributes['notConfirmed'] = False
+
     chosenAvenger = session_attributes['chosenAvenger']
     chosenHint = session_attributes['chosenHint']
     repeatHint = avengerHint[chosenAvenger][chosenHint]
@@ -89,10 +94,52 @@ def get_repeatIntent_response(intent, session):
     modEmphasis = '<emphasis level="moderate">{text}</emphasis>'
     speech_output = reducedEmphasis.format(text='Yeah, here it is.') + ' <break time="1s"/> ' + modEmphasis.format(text=repeatHint)
     reprompt_text = "I'll repeat again. "+repeatHint
+    session_attributes['repeated'] = True
         
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))    
+
+
+def get_confirmIntent_response(intent, session):
+    card_title = "Confirm"
+    session_attributes = session['attributes']
+    userInput = intent['slots']['answer']['resolutions']['resolutionsPerAuthority'][0]
+    userInputStatus = userInput['status']['code']
+    matchedCode = "ER_SUCCESS_MATCH"
+    should_end_session = False
+
+    if session_attributes['confirming'] and userInputStatus == matchedCode:
+        userInputValues = userInput['values'][0]['value']
+        userAnswer = int(userInputValues['id'])
+        loudEmphasis = '<prosody volume="x-loud">{text}</prosody>'
+        session_attributes['notConfirmed'] = False
+        session_attributes['confirming'] = False
+
+        if userAnswer == 1:
+            chosenAvenger = session_attributes['chosenAvenger']
+            guessedAvenger = session_attributes['tempAnswer']
+
+            if guessedAvenger == chosenAvenger:
+                speech_output = loudEmphasis.format(text='Correct Answer!')+" You've been watching Marvel closely. Hope to see you loose next time!"
+                reprompt_text = "Great Guess! You won't be so lucky next time though."
+            else:
+                speech_output = loudEmphasis.format(text="Have you actually watched any Marvel movie?")+" That's an Incorrect Answer. Watch some movies and come back again!"
+                reprompt_text = "Seriously. Watch some Marvel movies. They're great!"
+
+            should_end_session = True
+        else:
+            speech_output = "Go on! Try to guess another one!"
+            reprompt_text = "Come on! Think of some other Avenger you might have forgotten!"
+    else:
+        guessedAvenger = 0
+        speech_output = "I'm not sure what you want to say."
+        reprompt_text = "I said, I'm not sure about that."
+
+        
+    return build_response(session_attributes, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
 
 def get_welcome_response():
     """ If we wanted to initialize the session to have some attributes we could
@@ -111,6 +158,7 @@ def get_welcome_response():
     session_attributes['chosenAvenger'] = chosenAvenger
     session_attributes['chosenHint'] = chosenHint
     session_attributes['confirming'] = False
+    session_attributes['notConfirmed'] = True
 
     modEmphasis = '<emphasis level="moderate">{text}</emphasis>'
     speech_output += '<voice name="{voice}">{text}</voice>'.format(text=avengerHint[chosenAvenger][chosenHint], voice=voices[chosenAvenger])
@@ -164,6 +212,8 @@ def on_intent(intent_request, session):
         return get_guessIntent_response(intent, session)
     elif intent_name == "repeatIntent":
         return get_repeatIntent_response(intent, session)
+    elif intent_name == "confirmIntent":
+        return get_confirmIntent_response(intent, session)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
@@ -189,11 +239,6 @@ def lambda_handler(event, context):
     """
     print("Incoming request...")
 
-    """
-    Uncomment this if statement and populate with your skill's application ID to
-    prevent someone else from configuring a skill that sends requests to this
-    function.
-    """
     #if (event['session']['application']['applicationId'] != "amzn1.echo-sdk-ams.app.[unique-value-here]"):
     #    raise ValueError("Invalid Application ID")
 
