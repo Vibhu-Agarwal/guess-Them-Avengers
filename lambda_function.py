@@ -40,10 +40,15 @@ def build_response(session_attributes, speechlet_response):
 
 def get_guessIntent_response(intent, session):
     session_attributes = {}
+    #userInput = intent['slots']['avengerName']['resolutions']['resolutionsPerAuthority'][0]['values'][0]['value']
+    #guessedAvenger = int(userInput['id'])
+    #chosenAvenger = session_attributes['chosenAvenger']
+
+    guessedAvenger = 0
+
     card_title = "Guess"
-    speech_output = "Trying to guess Hmmm."
-    reprompt_text = "Guess, yeah."
-        
+    speech_output = "You think it's {guessedAvengerName}?.".format(guessedAvengerName = avengers[guessedAvenger])
+    reprompt_text = "You really think it's {guessedAvenger}?.".format(guessedAvengerName = avengers[guessedAvenger])
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
@@ -65,12 +70,22 @@ def get_welcome_response():
     """
     session_attributes = {}
     card_title = "Welcome"
-    speech_output = "Welca, Oh Wait. We don't do that here. So! Let's see what you've got. Here's your hint."
+    speech_output = "Welca, Oh Wait. We don't do that here. So! Let's see what you've got. Here's your hint. "
+
     totalAvengers = len(avengers)
-    speech_output += "We've got "+str(totalAvengers)+" with us."
+    chosenAvenger = random.randint(0,totalAvengers-1)
+
+    totalHints = len(avengerHint[chosenAvenger])
+    chosenHint = random.randint(0,totalHints-1)
+
+    session_attributes['chosenAvenger'] = chosenAvenger
+    session_attributes['chosenHint'] = chosenHint
+    session_attributes['repeated'] = False
+
+    speech_output += avengerHint[chosenAvenger][chosenHint]
     # If the user either does not reply to the welcome message or says something
     # that is not understood, they will be prompted again with this text.
-    reprompt_text = "I don't know if you heard me, welcome to your custom alexa application!"
+    reprompt_text = "I'll repeat. "+avengerHint[chosenAvenger][chosenHint]
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
         card_title, speech_output, reprompt_text, should_end_session))
